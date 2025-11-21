@@ -1,0 +1,60 @@
+{% extends "layout.html" %}
+{% block body %}
+<div class="d-flex justify-content-between align-items-center mb-2">
+  <h3 class="m-0">Devices</h3>
+  <div class="d-flex gap-2 align-items-center">
+    <div class="dropdown">
+      <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" id="exportMenu2" data-bs-toggle="dropdown" aria-expanded="false">
+        Export
+      </button>
+      <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="exportMenu2">
+        <li><a class="dropdown-item" href="/data/devices.csv">Devices CSV</a></li>
+        <li><a class="dropdown-item" href="/data/devices.json">Devices JSON</a></li>
+        <li><hr class="dropdown-divider"></li>
+        <li><a class="dropdown-item" href="/data/points.csv">Points CSV</a></li>
+        <li><a class="dropdown-item" href="/data/points.json">Points JSON</a></li>
+        <li><hr class="dropdown-divider"></li>
+        <li class="dropdown-header">All Samples (All Devices)</li>
+        <li><a class="dropdown-item" href="/data/samples-all.csv">All Samples CSV</a></li>
+        <li><a class="dropdown-item" href="/data/samples-all.json">All Samples JSON</a></li>
+      </ul>
+    </div>
+    <form class="d-flex" role="search" onsubmit="return false;">
+      <input id="q" class="form-control" type="search" placeholder="Search" aria-label="Search" oninput="filterRows()">
+    </form>
+  </div>
+</div>
+<div class="table-responsive">
+  <table class="table table-striped table-hover" id="devtable">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Address</th>
+        <th>Vendor</th>
+        <th>Model</th>
+        <th>Last Seen (UTC)</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for d in devices %}
+      <tr>
+        <td><a href="/devices/{{ d.device_id }}">{{ d.device_id }}</a></td>
+        <td>{{ d.address }}</td>
+        <td>{{ d.vendor_name or '' }}</td>
+        <td>{{ d.model_name or '' }}</td>
+        <td>{{ d.last_seen_utc }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+<script>
+function filterRows(){
+  const q = (document.getElementById('q').value||'').toLowerCase();
+  const rows = document.querySelectorAll('#devtable tbody tr');
+  for (const r of rows) {
+    r.style.display = r.innerText.toLowerCase().includes(q) ? '' : 'none';
+  }
+}
+</script>
+{% endblock %}

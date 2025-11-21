@@ -1,0 +1,46 @@
+/* Basic layout tuning */
+body { background: #f8f9fb; }
+.navbar { border-bottom: 1px solid #e9ecef; }
+.container { max-width: 1200px; }
+.card { border: 1px solid #e9ecef; box-shadow: 0 1px 2px rgba(0,0,0,0.03); }
+
+/* Form alignment */
+.form-grid { display: grid; grid-template-columns: 1fr 150px 150px 160px auto; gap: 12px; align-items: end; }
+@media (max-width: 992px) { .form-grid { grid-template-columns: 1fr 1fr; } }
+.btn-stack { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* Buttons */
+.btn-primary { box-shadow: 0 1px 0 rgba(0,0,0,0.05); }
+.btn-outline-secondary { color: #6c757d; border-color: #ced4da; }
+.btn-outline-secondary:hover { background:#f1f3f5; }
+
+/* Progress card */
+.progress { height: 10px; }
+.progress .progress-bar { transition: width .25s ease; }
+
+/* Status badge */
+.status-badge { font-weight: 600; padding: 2px 8px; border-radius: 10px; font-size: .9rem; }
+.status-idle { background:#e9ecef; color:#495057; }
+.status-running { background:#d1e7dd; color:#0f5132; }
+.status-done { background:#cfe2ff; color:#084298; }
+.status-error, .status-stopped { background:#f8d7da; color:#842029; }
+.status-stopping { background:#fff3cd; color:#664d03; }
+
+/* Tables */
+table.table th { color:#495057; }
+table.table td, table.table th { vertical-align: middle; }
+
+/* Activity list */
+#events { background:#fff; border:1px solid #e9ecef; border-radius: .375rem; padding: 8px; }
+
+/* Chart box */
+#chart { width: 100%; }
+
+/* Auto-width IP/CIDR input */
+.form-control.auto-width { width: auto !important; display: inline-block; }
+.monospace { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+#local { min-width: 16ch; max-width: 32ch; }
+@media (max-width: 576px) {
+  .form-control.auto-width { width: 100% !important; }
+  #local { max-width: 100%; }
+}

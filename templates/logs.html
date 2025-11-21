@@ -1,0 +1,12 @@
+{% extends "layout.html" %}
+{% block body %}
+<h3>Activity</h3>
+<div class="card p-3">
+  <div style="max-height: 60vh; overflow: auto; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace; font-size: 12px;">
+    {% for e in events %}
+      <div>[{{ e.ts }}] {{ e.event }}{% if e.device_id %} device={{ e.device_id }}{% endif %}{% if e.address %} addr={{ e.address }}{% endif %}{% if e.count %} count={{ e.count }}{% endif %}</div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}
+

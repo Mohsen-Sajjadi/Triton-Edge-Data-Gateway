@@ -1,0 +1,347 @@
+{% extends "layout.html" %}
+{% block body %}
+<div class="row g-3 mb-3">
+  <div class="col-lg-8">
+    <div class="card p-3">
+      {% if state.error %}
+        <div id="serverError" class="alert alert-danger d-flex justify-content-between align-items-start mb-3" role="alert">
+          <div>
+            <div class="fw-semibold">Latest Error</div>
+            <div class="small" style="white-space: pre-wrap">{{ state.error }}</div>
+          </div>
+          <form method="post" action="/reset"><button class="btn btn-sm btn-outline-light">Clear</button></form>
+        </div>
+      {% endif %}
+      <!-- Live-updated error box (shown/hidden by refresh()) -->
+      <div id="errbox" class="alert alert-danger d-flex justify-content-between align-items-start mb-3 d-none" role="alert">
+        <div>
+          <div class="fw-semibold">Latest Error</div>
+          <div id="errtext" class="small" style="white-space: pre-wrap"></div>
+        </div>
+        <form method="post" action="/reset"><button class="btn btn-sm btn-outline-light">Clear</button></form>
+      </div>
+      <form id="startForm" method="post" action="/start">
+        <div class="form-grid">
+          <div>
+            <label class="form-label">Local interface</label>
+            <input id="local" type="text" name="local" placeholder="e.g. 192.168.10.25/24" class="form-control auto-width monospace" value="{{ state.last_options.local or '' }}">
+          </div>
+          <div>
+            <label class="form-label">Port</label>
+            <input type="number" name="port" placeholder="47808" class="form-control" value="{{ state.last_options.port or '' }}">
+          </div>
+          <div>
+            <label class="form-label">Sleep (sec)</label>
+            <input type="number" step="0.01" name="sleep" value="{{ state.last_options.sleep or 0.1 }}" class="form-control">
+          </div>
+          <div class="form-check mt-4">
+            <input class="form-check-input" type="checkbox" name="snapshot" id="snap" {% if state.last_options.snapshot %}checked{% endif %}>
+            <label class="form-check-label" for="snap">Snapshot values</label>
+          </div>
+        </div>
+      </form>
+      <div class="btn-stack mt-2">
+        <button form="startForm" type="submit" class="btn btn-primary" {% if state.status == 'running' %}disabled{% endif %}>Start</button>
+        <form method="post" action="/stop" class="d-inline">
+          <button class="btn btn-outline-danger" {% if state.status != 'running' and state.status != 'stopping' %}disabled{% endif %}>Stop</button>
+        </form>
+        <form method="post" action="/restart" class="d-inline">
+          <button class="btn btn-outline-primary" {% if state.status == 'running' %}disabled{% endif %}>Restart</button>
+        </form>
+        <form method="post" action="/hard-refresh" class="d-inline">
+          <button class="btn btn-outline-secondary">Refresh</button>
+        </form>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-4">
+    <div class="card p-3">
+      <div class="d-flex justify-content-between align-items-center">
+        <div>
+          <div class="muted">Status</div>
+          <div id="st" class="status-badge status-{{ state.status | replace(' ', '-') }}">{{ state.status }}</div>
+        </div>
+        <div class="text-end">
+          <div class="muted">Progress</div>
+          <div class="metric"><span id="done">0</span>/<span id="total">0</span></div>
+        </div>
+      </div>
+      <div class="progress mt-2" role="progressbar" aria-label="Progress">
+        <div id="bar" class="progress-bar" style="width: 0%"></div>
+      </div>
+      <div class="mt-2">
+        <small class="muted" id="times"></small>
+      </div>
+      <div class="mt-3 d-flex justify-content-between align-items-center border-top pt-2">
+        <div>
+          <div class="muted">Memory (RSS)</div>
+          <div class="metric"><span id="memuse">{{ "%.1f"|format((proc_mem.rss_mb or 0) if proc_mem.rss_mb is not none else 0) }}</span> MB</div>
+        </div>
+        <div class="text-end">
+          <div class="muted">Usage</div>
+          <div class="metric"><span id="mempct">{{ "%.1f"|format((proc_mem.percent or 0) if proc_mem.percent is not none else 0) }}</span>%</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3 mb-3">
+  <div class="col-lg-8">
+    <div class="card p-3">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <h5 class="m-0">Devices</h5>
+        <div class="d-flex gap-2 flex-wrap align-items-center">
+          <a class="btn btn-sm btn-outline-secondary" href="/devices">Open full list</a>
+          <div class="dropdown">
+            <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" id="exportMenu1" data-bs-toggle="dropdown" aria-expanded="false">
+              Export
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="exportMenu1">
+              <li><a class="dropdown-item" href="/data/devices.csv">Devices CSV</a></li>
+              <li><a class="dropdown-item" href="/data/devices.json">Devices JSON</a></li>
+              <li><hr class="dropdown-divider"></li>
+              <li><a class="dropdown-item" href="/data/points.csv">Points CSV</a></li>
+              <li><a class="dropdown-item" href="/data/points.json">Points JSON</a></li>
+              <li><hr class="dropdown-divider"></li>
+              <li class="dropdown-header">All Samples (All Devices)</li>
+              <li><a class="dropdown-item" href="/data/samples-all.csv">All Samples CSV</a></li>
+              <li><a class="dropdown-item" href="/data/samples-all.json">All Samples JSON</a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-sm">
+          <thead><tr><th>ID</th><th>Address</th><th>Vendor</th><th>Model</th><th>Objects</th><th>Snapshot</th></tr></thead>
+          <tbody id="devtbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-4">
+    <div class="card p-3">
+      <h5 class="mb-2">Objects per Device</h5>
+      <canvas id="chart" height="140"></canvas>
+    </div>
+  </div>
+</div>
+
+<div class="card p-3 mb-3">
+  <h5 class="mb-2">Recent Activity</h5>
+  <div id="events" style="max-height:220px; overflow:auto; font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size: 12px;"></div>
+</div>
+
+<div class="row g-3 mb-3">
+  <div class="col-lg-8">
+    <div class="card p-3">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <h5 class="m-0">Extraction (Polling)</h5>
+      </div>
+      <div class="mb-3">
+        <form class="row gy-2 gx-2 align-items-end" method="post" action="/poll/upload" enctype="multipart/form-data">
+          <div class="col-md-6">
+            <label class="form-label">Upload extraction list (CSV)</label>
+            <input class="form-control" type="file" name="file" accept=".csv" required>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Project name</label>
+            <input class="form-control" type="text" name="project" placeholder="project-xyz" value="{{ poll.project or '' }}">
+          </div>
+          <div class="col-md-2">
+            <button class="btn btn-secondary w-100" type="submit">Upload</button>
+          </div>
+        </form>
+      </div>
+      <form id="pollStartForm" class="row gy-2 gx-2 align-items-end" method="post" action="/poll/start">
+        <div class="col-md-4">
+          <label class="form-label">Project</label>
+          <select class="form-select" name="project">
+            {% if poll.project %}<option selected value="{{ poll.project }}">{{ poll.project }}</option>{% endif %}
+            {% for m in maps %}
+              {% set pname = m.replace('extraction_map_', '').replace('.csv', '') %}
+              {% if pname != poll.project %}<option value="{{ pname }}">{{ pname }}</option>{% endif %}
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Interval</label>
+          <select class="form-select" name="interval">
+            <option value="300" {% if (poll.interval_sec or 0) == 300 %}selected{% endif %}>5 minutes</option>
+            <option value="600" {% if (poll.interval_sec or 0) == 600 %}selected{% endif %}>10 minutes</option>
+            <option value="900" {% if (poll.interval_sec or 900) == 900 %}selected{% endif %}>15 minutes</option>
+          </select>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">Local</label>
+          <input class="form-control monospace" type="text" name="local" placeholder="{{ state.last_options.local or '' }}">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">Port</label>
+          <input class="form-control" type="number" name="port" placeholder="47808">
+        </div>
+        <div class="col-12 d-flex gap-2 mt-2">
+          <button class="btn btn-primary" type="submit" {% if poll.status == 'running' %}disabled{% endif %}>Start Extraction</button>
+        </div>
+      </form>
+      <form method="post" action="/poll/stop" class="d-inline">
+        <button class="btn btn-outline-danger mt-2" {% if poll.status != 'running' and poll.status != 'stopping' %}disabled{% endif %}>Stop Extraction</button>
+      </form>
+      {% if poll.last_error %}
+      <div class="alert alert-danger mt-3" role="alert">{{ poll.last_error }}</div>
+      {% endif %}
+    </div>
+  </div>
+  <div class="col-lg-4">
+    <div class="card p-3">
+      <div class="d-flex justify-content-between align-items-center">
+        <div>
+          <div class="muted">Extraction Status</div>
+          <div id="pollst" class="status-badge">{{ poll.status }}</div>
+        </div>
+        <div class="text-end">
+          <div class="muted">Interval</div>
+          <div class="metric"><span id="pollint">{{ poll.interval_sec or 0 }}</span>s</div>
+        </div>
+      </div>
+      <div class="mt-2 small">
+        <div>Project: <span id="pollproj">{{ poll.project or '-' }}</span></div>
+        <div>Map: <span id="pollmap">{{ poll.map_path or '-' }}</span></div>
+        <div>Last cycle: <span id="pollts">{{ (poll.last_cycle.ts if poll.last_cycle else '') or '-' }}</span></div>
+        <div>Points/read/errors: <span id="pollcnt">{{ (poll.last_cycle.points if poll.last_cycle else 0) or 0 }}</span>/<span id="pollok">{{ (poll.last_cycle.read if poll.last_cycle else 0) or 0 }}</span>/<span id="pollerr">{{ (poll.last_cycle.errors if poll.last_cycle else 0) or 0 }}</span></div>
+      </div>
+    </div>
+  </div>
+  </div>
+
+<script>
+async function refresh() {
+  try {
+    const r = await fetch('/status.json');
+    const s = await r.json();
+    document.getElementById('st').textContent = s.status;
+    setStatusBadge(s.status);
+    const total = s.total_devices || 0, done = s.completed || 0;
+    const pct = total ? Math.round(100 * done / total) : (s.status === 'running' ? 5 : 0);
+    document.getElementById('bar').style.width = pct + '%';
+    document.getElementById('done').textContent = done; document.getElementById('total').textContent = total;
+    const t = [];
+    if (s.started_at) t.push('started ' + s.started_at);
+    if (s.finished_at) t.push('finished ' + s.finished_at);
+    document.getElementById('times').textContent = t.join('  -  ');
+    // Show/hide live error banner
+    const errBox = document.getElementById('errbox');
+    const errText = document.getElementById('errtext');
+    const serverErr = document.getElementById('serverError');
+    if (s.error) {
+      if (serverErr) serverErr.classList.add('d-none');
+      if (errBox && errText) {
+        errText.textContent = s.error;
+        errBox.classList.remove('d-none');
+      }
+    } else {
+      if (errBox) errBox.classList.add('d-none');
+      if (serverErr) serverErr.classList.add('d-none');
+    }
+    // devices table from RUN_STATE.device_stats
+    const tb = document.getElementById('devtbody');
+    tb.innerHTML = '';
+    const stats = s.device_stats || {};
+    for (const k of Object.keys(stats)) {
+      const d = stats[k];
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td><a href="/devices/${k}">${k}</a></td><td>${d.address||''}</td><td></td><td></td><td>${d.objects||0}</td><td>${d.snapshot||0}</td>`;
+      tb.appendChild(tr);
+    }
+    // events
+    const ev = s.events || [];
+    const evDiv = document.getElementById('events');
+    evDiv.innerHTML = ev.slice(-100).map(e => `[${e.ts||''}] ${e.event} ${e.device_id||''} ${e.address||''} ${e.count||''}`).reverse().join('<br>');
+
+    const mem = s.process_memory || {};
+    const memUse = document.getElementById('memuse');
+    if (memUse) {
+      const val = (typeof mem.rss_mb === 'number') ? mem.rss_mb.toFixed(1) : '–';
+      memUse.textContent = val;
+    }
+    const memPct = document.getElementById('mempct');
+    if (memPct) {
+      const val = (typeof mem.percent === 'number') ? mem.percent.toFixed(1) : '–';
+      memPct.textContent = val;
+    }
+  } catch (e) { /* ignore */ }
+}
+setInterval(refresh, 1200); refresh();
+
+let chart;
+async function loadChart() {
+  try {
+    const r = await fetch('/data/object-counts.json');
+    const rows = await r.json();
+    const labels = rows.map(x => x.label || x.device_id);
+    const counts = rows.map(x => x.count);
+    const ctx = document.getElementById('chart');
+    if (chart) chart.destroy();
+    chart = new Chart(ctx, {
+      type: 'bar',
+      data: { labels, datasets: [{ label: 'Objects', data: counts, backgroundColor: '#0d6efd' }]},
+      options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true }}}
+    });
+  } catch (e) { /* ignore */ }
+}
+// Color status badge
+function setStatusBadge(status) {
+  const el = document.getElementById('st');
+  if (!el) return;
+  el.className = 'status-badge';
+  const s = (status||'idle').toLowerCase();
+  if (s === 'running') el.classList.add('status-running');
+  else if (s === 'done') el.classList.add('status-done');
+  else if (s === 'error' || s === 'stopped') el.classList.add('status-error');
+  else if (s === 'stopping') el.classList.add('status-stopping');
+  else el.classList.add('status-idle');
+}
+setInterval(loadChart, 5000); loadChart();
+</script>
+<script>
+// Auto-size the Local interface input to its content length
+function fitLocalWidth() {
+  const el = document.getElementById('local');
+  if (!el) return;
+  const len = (el.value || el.placeholder || '').length;
+  const ch = Math.min(32, Math.max(16, len + 2));
+  el.style.width = ch + 'ch';
+}
+document.addEventListener('DOMContentLoaded', () => {
+  const el = document.getElementById('local');
+  if (el) {
+    fitLocalWidth();
+    el.addEventListener('input', fitLocalWidth);
+  }
+});
+</script>
+<script>
+// Poll extraction status
+async function refreshPoll() {
+  try {
+    const r = await fetch('/poll/status.json');
+    const s = await r.json();
+    const st = (s.status||'idle').toLowerCase();
+    const el = document.getElementById('pollst');
+    if (el) { el.textContent = s.status; el.className = 'status-badge ' + (st==='running'?'status-running': (st==='error'?'status-error': (st==='stopping'?'status-stopping':'status-idle'))); }
+    const put = (id,val)=>{ const e=document.getElementById(id); if(e) e.textContent = val ?? ''; };
+    put('pollint', s.interval_sec||0);
+    put('pollproj', s.project||'-');
+    put('pollmap', s.map_path||'-');
+    if (s.last_cycle) {
+      put('pollts', s.last_cycle.ts||'');
+      put('pollcnt', s.last_cycle.points||0);
+      put('pollok', s.last_cycle.read||0);
+      put('pollerr', s.last_cycle.errors||0);
+    }
+  } catch (e) { /* ignore */ }
+}
+setInterval(refreshPoll, 1500); refreshPoll();
+</script>
+{% endblock %}
+

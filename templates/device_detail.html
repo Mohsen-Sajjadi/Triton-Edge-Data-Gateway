@@ -1,0 +1,70 @@
+{% extends "layout.html" %}
+{% block body %}
+<div class="d-flex justify-content-between align-items-center mb-2">
+  <h3 class="m-0">Device {{ device[0] }} @ {{ device[1] }}</h3>
+  <div class="d-flex gap-2 align-items-center">
+    <div class="dropdown">
+      <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" id="exportMenu3" data-bs-toggle="dropdown" aria-expanded="false">
+        Export
+      </button>
+      <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="exportMenu3">
+        <li class="dropdown-header">Objects</li>
+        <li><a class="dropdown-item" href="/data/devices/{{ device[0] }}/objects.csv">Objects CSV</a></li>
+        <li><a class="dropdown-item" href="/data/devices/{{ device[0] }}/objects.json">Objects JSON</a></li>
+        <li><hr class="dropdown-divider"></li>
+        <li class="dropdown-header">Recent Samples</li>
+        <li><a class="dropdown-item" href="/data/devices/{{ device[0] }}/samples.csv">Samples CSV</a></li>
+        <li><a class="dropdown-item" href="/data/devices/{{ device[0] }}/samples.json">Samples JSON</a></li>
+        <li><hr class="dropdown-divider"></li>
+        <li class="dropdown-header">All Samples</li>
+        <li><a class="dropdown-item" href="/data/devices/{{ device[0] }}/samples-all.csv">All Samples CSV</a></li>
+        <li><a class="dropdown-item" href="/data/devices/{{ device[0] }}/samples-all.json">All Samples JSON</a></li>
+      </ul>
+    </div>
+    <a href="/devices" class="btn btn-outline-secondary">Back</a>
+  </div>
+  </div>
+
+<div class="row g-3 mb-3">
+  <div class="col-lg-5">
+    <div class="card p-3">
+      <div><strong>Vendor</strong>: {{ device[2] or '' }}</div>
+      <div><strong>Model</strong>: {{ device[3] or '' }}</div>
+      <div><strong>Last Seen</strong>: {{ device[4] or '' }}</div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-6">
+    <div class="card p-3">
+      <h5>Objects</h5>
+      <div class="table-responsive">
+        <table class="table table-sm table-striped">
+          <thead><tr><th>Type</th><th>Instance</th><th>Name</th></tr></thead>
+          <tbody>
+          {% for o in objects %}
+            <tr><td>{{ o[0] }}</td><td>{{ o[1] }}</td><td>{{ o[2] or '' }}</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="card p-3">
+      <h5>Recent Samples</h5>
+      <div class="table-responsive">
+        <table class="table table-sm table-striped">
+          <thead><tr><th>When (UTC)</th><th>Object</th><th>Property</th><th>Value</th></tr></thead>
+          <tbody>
+          {% for s in samples %}
+            <tr><td>{{ s[4] }}</td><td>{{ s[0] }},{{ s[1] }}</td><td>{{ s[2] }}</td><td>{{ s[3] }}</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
